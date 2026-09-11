@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
 
+const BACKEND_URL = "https://aquamind-ai-ltvn.onrender.com";
+
 function App() {
   // ================= MODE =================
   const [mode, setMode] = useState("manual");
@@ -101,7 +103,7 @@ function App() {
   // ================= COMMON PREDICTION API =================
   // Used by Manual mode and Live IoT mode.
   const getPrediction = async (pressure, flowRate) => {
-    const response = await fetch("http://127.0.0.1:8000/predict", {
+    const response = await fetch(`${BACKEND_URL}/predict`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -129,9 +131,7 @@ function App() {
       setManualInsight("Generating AI insight...");
       setManualRecommendation("Generating AI recommendation...");
 
-      const response = await fetch(
-        "http://127.0.0.1:8000/gemini-analysis",
-        {
+      const response = await fetch(`${BACKEND_URL}/gemini-analysis`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -263,9 +263,7 @@ function App() {
 useEffect(() => {
   const checkBackendConnection = async () => {
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/health"
-      );
+      const response = await fetch(`${BACKEND_URL}/health`);
 
       if (!response.ok) {
         throw new Error("Backend unavailable");
@@ -296,7 +294,7 @@ useEffect(() => {
       setIotLoading(true);
 
       // 1. Get newest IoT sensor reading
-      const response = await fetch("http://127.0.0.1:8000/iot/latest");
+      const response = await fetch(`${BACKEND_URL}/iot/latest`);
 
       if (!response.ok) {
         throw new Error("IoT data request failed");
