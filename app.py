@@ -47,7 +47,6 @@ last_iot_request_time = 0
 
 
 def run_iot_simulator():
-    global last_iot_request_time
 
     data_file = "data/water_data.xlsx"
 
@@ -77,16 +76,11 @@ def run_iot_simulator():
 
         while True:
 
-            # Stop simulator if website has not requested
-            # live IoT data for 20 seconds.
-            if time.time() - last_iot_request_time > 20:
-                print("No active Live IoT user. Simulator stopped.")
-                break
-
             reading_number += 1
 
-            # Same pattern as your existing local simulator:
-            # 11 normal readings, then 1 leak/burst event.
+            # Same simulation logic as the original
+            # local iot_simulator.py
+
             if reading_number % 12 != 0:
 
                 row = normal_data.sample(n=1).iloc[0]
