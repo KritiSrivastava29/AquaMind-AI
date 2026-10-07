@@ -164,6 +164,10 @@ def start_iot_simulator():
 
             print("Cloud IoT simulator started.")
 
+@app.on_event("startup")
+def start_cloud_iot_simulator():
+    start_iot_simulator()
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -548,8 +552,6 @@ Rules:
 
 @app.get("/iot/latest")
 def get_latest_iot_data():
-
-    start_iot_simulator()
 
     url = (
         f"{THINGSBOARD_HOST}"
