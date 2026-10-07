@@ -494,22 +494,6 @@ useEffect(() => {
   // Runs only in IoT mode and stops after mode changes.
   // =================================================
   useEffect(() => {
-    if (mode !== "iot") {
-      return;
-    }
-
-    // Start a fresh Live IoT session
-    setIotSessionStats({
-      readings: 0,
-      warnings: 0,
-      critical: 0,
-      anomalies: 0,
-      efficiencyTotal: 0,
-    });
-
-    setIotAnomaly(null);
-    previousIoTReadingRef.current = null;
-
     fetchLiveIoTData();
 
     const intervalId = setInterval(() => {
@@ -517,7 +501,7 @@ useEffect(() => {
     }, 5000);
 
     return () => clearInterval(intervalId);
-  }, [mode]);
+  }, []);
 
   // ================= ACTIVE MODE VALUES =================
   const activeResult = mode === "manual" ? manualResult : iotResult;
