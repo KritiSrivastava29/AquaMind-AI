@@ -7,6 +7,9 @@ from google import genai
 import os
 import json
 import requests
+import random
+import time
+import threading
 from dotenv import load_dotenv
 
 
@@ -30,6 +33,142 @@ THINGSBOARD_HOST = "https://eu.thingsboard.cloud"
 
 THINGSBOARD_DEVICE_ID = os.getenv("THINGSBOARD_DEVICE_ID")
 THINGSBOARD_API_KEY = os.getenv("THINGSBOARD_API_KEY")
+THINGSBOARD_DEVICE_TOKEN = os.getenv("THINGSBOARD_DEVICE_TOKEN")
+
+
+# ==========================================
+# CLOUD IOT SIMULATOR
+# Runs only while Live IoT is being requested
+# ==========================================
+
+iot_simulator_thread = None
+iot_simulator_lock = threading.Lock()
+last_iot_request_time = 0
+
+
+def run_iot_simulator():
+    global last_iot_request_time
+
+    data_file = "data/water_data.xlsx"
+
+    try:
+        data = pd.read_excel(data_file)
+
+        normal_data = data[
+            (data["Leak Status"] == 0) &
+            (data["Burst Status"] == 0)
+        ].copy()
+
+        leak_data = data[
+            data["Leak Status"] == 1
+        ].copy()
+
+        burst_data = data[
+            data["Burst Status"] == 1
+        ].copy()
+
+        print("AquaMind AI - Cloud IoT Simulator")
+        print(f"Dataset loaded: {data_file}")
+        print(f"Normal readings : {len(normal_data)}")
+        print(f"Leak readings   : {len(leak_data)}")
+        print(f"Burst readings  : {len(burst_data)}")
+
+        reading_number = 0
+
+        while True:
+
+            # Stop simulator if website has not requested
+            # live IoT data for 20 seconds.
+            if time.time() - last_iot_request_time > 20:
+                print("No active Live IoT user. Simulator stopped.")
+                break
+
+            reading_number += 1
+
+            # Same pattern as your existing local simulator:
+            # 11 normal readings, then 1 leak/burst event.
+            if reading_number % 12 != 0:
+
+                row = normal_data.sample(n=1).iloc[0]
+
+                pressure = row["Pressure (bar)"]
+                flow_rate = row["Flow Rate (L/s)"]
+
+                status = "NORMAL"
+
+            else:
+
+                if random.choice(["leak", "burst"]) == "leak":
+
+                    row = leak_data.sample(n=1).iloc[0]
+                    status = "LEAK EVENT"
+
+                else:
+
+                    row = burst_data.sample(n=1).iloc[0]
+                    status = "BURST EVENT"
+
+                pressure = row["Pressure (bar)"]
+                flow_rate = row["Flow Rate (L/s)"]
+
+            telemetry = {
+                "pressure": round(float(pressure), 2),
+                "flow_rate": round(float(flow_rate), 2)
+            }
+
+            url = (
+                f"https://eu.thingsboard.cloud/api/v1/"
+                f"{THINGSBOARD_DEVICE_TOKEN}/telemetry"
+            )
+
+            try:
+
+                response = requests.post(
+                    url,
+                    json=telemetry,
+                    timeout=10
+                )
+
+                print(
+                    f"[{status}] "
+                    f"Pressure: {pressure:.2f} bar | "
+                    f"Flow: {flow_rate:.2f} L/s | "
+                    f"Status: {response.status_code}"
+                )
+
+            except Exception as error:
+
+                print("Cloud IoT simulator error:", error)
+
+            time.sleep(5)
+
+    except Exception as error:
+
+        print("IoT simulator startup error:", error)
+
+
+def start_iot_simulator():
+
+    global iot_simulator_thread
+    global last_iot_request_time
+
+    last_iot_request_time = time.time()
+
+    with iot_simulator_lock:
+
+        if (
+            iot_simulator_thread is None
+            or not iot_simulator_thread.is_alive()
+        ):
+
+            iot_simulator_thread = threading.Thread(
+                target=run_iot_simulator,
+                daemon=True
+            )
+
+            iot_simulator_thread.start()
+
+            print("Cloud IoT simulator started.")
 
 
 app.add_middleware(
@@ -415,6 +554,8 @@ Rules:
 
 @app.get("/iot/latest")
 def get_latest_iot_data():
+
+    start_iot_simulator()
 
     url = (
         f"{THINGSBOARD_HOST}"
